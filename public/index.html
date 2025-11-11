@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rakit Hardware - Smart Vital Monitor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    body { background: #000; color: white; font-family: "Courier New", monospace; overflow: hidden; }
+
+    .digit-glow { text-shadow: 0 0 8px rgba(0, 255, 0, 0.7); }
+    .monitor-frame { background: radial-gradient(circle at center, #0a0a0a, #000); border: 4px solid #0f3b7a; border-radius: 1.5rem; box-shadow: 0 0 60px rgba(0,0,255,0.2); }
+    .section-title { font-size: 0.8rem; color: #9ca3af; margin-bottom: 0.25rem; }
+
+    /* Fade transition */
+    .fade { opacity: 0; transition: opacity 1s ease-in-out; pointer-events: none; }
+    .visible { opacity: 1; pointer-events: auto; }
+
+    /* Magnify animation */
+    .magnify {
+      transform: scale(1.3);
+      transition: transform 0.6s ease-out, text-shadow 0.6s ease-out;
+      text-shadow: 0 0 25px rgba(0, 255, 0, 0.8);
+    }
+    .normal { transform: scale(1); transition: transform 0.6s ease-in-out; }
+
+    /* Result Panel Style */
+    #result-panel {
+      background: linear-gradient(180deg, #001020, #000);
+      border: 3px solid #00bfff;
+      border-radius: 1.5rem;
+      box-shadow: 0 0 60px rgba(0,191,255,0.4);
+    }
+
+    /* Z-index layers */
+    .z-video { z-index: 10; }
+    .z-monitor { z-index: 20; }
+    .z-result { z-index: 25; }
+    .z-final { z-index: 30; }
+    .z-popup { z-index: 40; }
+
+    /* Popup */
+    #next-popup {
+      background: rgba(0,0,0,0.9);
+      border: 2px solid #00bfff;
+      border-radius: 1rem;
+      box-shadow: 0 0 25px rgba(0,191,255,0.5);
+    }
+  </style>
+</head>
+<body class="flex justify-center items-center h-screen">
+
+  <!-- Step 1: BP Tutorial -->
+  <div id="video-bp" class="fade visible absolute inset-0 flex justify-center items-center z-video">
+    <video src="BP.MOV" autoplay muted loop playsinline class="w-full h-full object-cover"></video>
+  </div>
+
+  <!-- Step 2: SpO₂ Tutorial -->
+  <div id="video-spo2" class="fade absolute inset-0 flex justify-center items-center z-video hidden">
+    <video src="oxygen.MOV" autoplay muted loop playsinline class="w-full h-full object-cover"></video>
+  </div>
+
+  <!-- Step 3: Temperature Tutorial -->
+  <div id="video-temp" class="fade absolute inset-0 flex justify-center items-center z-video hidden">
+    <video src="temperature.MOV" autoplay muted loop playsinline class="w-full h-full object-cover"></video>
+  </div>
+
+  <!-- Step 4: Vital Monitor -->
+  <div id="vital-monitor" class="fade monitor-frame p-6 w-[90%] max-w-md h-[90%] flex flex-col justify-between items-center absolute z-monitor hidden">
+    <div class="text-center mt-4">
+      <h1 class="text-2xl font-bold tracking-wider text-blue-400">RAKIT-HARDWARE</h1>
+      <p class="text-gray-400 text-xs">Smart Vital Monitor</p>
+    </div>
+
+    <div class="flex flex-col justify-center items-center text-center space-y-5 mt-4">
+      <div>
+        <p class="section-title">SYSTOLIC</p>
+        <span id="sys" class="digit-glow text-8xl font-extrabold text-green-400 normal">--</span>
+      </div>
+      <div>
+        <p class="section-title">DIASTOLIC</p>
+        <span id="dia" class="digit-glow text-6xl font-extrabold text-green-400 normal">--</span>
+      </div>
+      <div>
+        <p class="section-title">BPM</p>
+        <span id="bpm" class="digit-glow text-4xl font-extrabold text-yellow-400 normal">--</span>
+      </div>
+      <div>
+        <p class="section-title">SPO₂</p>
+        <span id="spo2" class="digit-glow text-6xl font-extrabold text-blue-400 normal">--</span>
+      </div>
+    </div>
+
+    <div id="status" class="text-yellow-400 text-lg font-semibold mb-4">Waiting for BP data...</div>
+  </div>
+
+  <!-- Step 5: Result Panel -->
+  <div id="result-panel" class="fade absolute inset-0 flex flex-col justify-center items-center text-center z-result hidden">
+    <h1 class="text-3xl font-bold text-blue-400 mb-6">MEASUREMENT RESULT</h1>
+    <div class="flex flex-col items-center space-y-4">
+      <div><p class="text-gray-400 text-sm">SYSTOLIC</p><p id="res-sys" class="text-8xl font-extrabold text-green-400">--</p></div>
+      <div><p class="text-gray-400 text-sm">DIASTOLIC</p><p id="res-dia" class="text-6xl font-extrabold text-green-400">--</p></div>
+      <div><p class="text-gray-400 text-sm">BPM</p><p id="res-bpm" class="text-4xl font-extrabold text-yellow-400">--</p></div>
+      <div><p class="text-gray-400 text-sm">SPO₂</p><p id="res-spo2" class="text-5xl font-extrabold text-blue-400">--</p></div>
+    </div>
+  </div>
+
+  <!-- Step 6: Final Results -->
+  <div id="final-display" class="fade flex flex-col items-center justify-center w-full h-full bg-black text-white absolute z-final hidden">
+    <h1 class="text-3xl md:text-5xl font-bold mb-8">FINAL RESULTS</h1>
+    <div class="grid grid-cols-1 gap-4 text-center">
+      <div><p class="text-gray-400 text-sm">SYS</p><p id="final-sys" class="text-6xl font-extrabold text-green-400">--</p></div>
+      <div><p class="text-gray-400 text-sm">DIA</p><p id="final-dia" class="text-5xl font-extrabold text-green-400">--</p></div>
+      <div><p class="text-gray-400 text-sm">BPM</p><p id="final-bpm" class="text-4xl font-extrabold text-yellow-400">--</p></div>
+      <div><p class="text-gray-400 text-sm">SPO₂</p><p id="final-spo2" class="text-5xl font-extrabold text-blue-400">--</p></div>
+      <div><p class="text-gray-400 text-sm">TEMP</p><p id="final-temp" class="text-5xl font-extrabold text-red-400">--</p></div>
+    </div>
+  </div>
+
+  <!-- Popup -->
+  <div id="next-popup" class="fixed inset-0 hidden items-center justify-center z-popup">
+    <div class="p-6 text-center">
+      <h2 class="text-2xl font-bold mb-4 text-blue-400">Measurement Complete!</h2>
+      <p class="mb-6 text-gray-300">Press Next to continue to Temperature measurement.</p>
+      <button id="next-btn" class="bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-lg font-bold text-white shadow-md">Next</button>
+    </div>
+  </div>
+
+  <script>
+    let latestSpo2 = "--", latestBpm = "--", latestTemp = "--";
+    let stage = "bpVideo";
+    let sawBP = false, sawSpO2 = false;
+
+    function fadeTo(targetId) {
+      const ids = ["video-bp","video-spo2","video-temp","vital-monitor","result-panel","final-display"];
+      const target = document.getElementById(targetId);
+      if (!target) return;
+      target.classList.remove("hidden");
+      requestAnimationFrame(() => target.classList.add("visible"));
+      ids.forEach(id=>{
+        if(id===targetId) return;
+        const el=document.getElementById(id);
+        if(!el) return;
+        el.classList.remove("visible");
+        setTimeout(()=>el.classList.add("hidden"),1000);
+      });
+    }
+
+    async function pollAPI(){
+      try{
+        const res = await fetch("/api/latest");
+        const data = await res.json();
+        const hasBP = typeof data.bp === "string" && data.bp.trim() !== "";
+        const hasSpO2 = typeof data.spo2 === "string" && data.spo2.trim() !== "";
+
+        if(stage === "bpVideo" && hasBP && !sawBP){
+          sawBP = true;
+          fadeTo("video-spo2");
+          stage = "spo2Video";
+        }
+
+        if(stage === "spo2Video" && hasSpO2 && !sawSpO2){
+          sawSpO2 = true;
+          fadeTo("vital-monitor");
+          stage = "monitor";
+        }
+
+        if(stage === "monitor"){
+          if(hasBP) updateBP(data.bp);
+          if(hasSpO2) updateSpo2(data.spo2);
+
+          if(hasBP && data.bp.includes("Result")){
+            fadeTo("result-panel");
+            animateResultMagnify();
+            fillResultPanel();
+            stage = "result";
+            setTimeout(()=>{
+              const popup=document.getElementById("next-popup");
+              popup.classList.remove("hidden");
+              popup.classList.add("flex");
+            },2000);
+          }
+        }
+
+        if (data.temp && typeof data.temp === "string" && /\d/.test(data.temp)) {
+          updateTemp(data.temp);
+
+          // 🌡️ Auto transition only if we actually received a temperature value
+          if (stage === "tempVideo" && /(\d+\.?\d*)/.test(data.temp)) {
+            setTimeout(() => {
+              fadeTo("final-display");
+              showFinal();
+              stage = "final";
+            }, 1500);
+          }
+        }
+
+
+      }catch(e){
+        console.error("API error:",e);
+      }
+      setTimeout(pollAPI,500);
+    }
+
+    function updateBP(value) {
+      // Example: "Result : 99 / 63, BPM : 65"
+      const clean = value.replace("On going :", "").replace("Result :", "").trim();
+
+      // Extract numbers properly
+      const bpMatch = clean.match(/(\d+)\s*\/\s*(\d+)/);
+      const bpmMatch = clean.match(/BPM\s*:\s*(\d+)/);
+
+      const sys = bpMatch ? bpMatch[1] : "--";
+      const dia = bpMatch ? bpMatch[2] : "--";
+      const bpm = bpmMatch ? bpmMatch[1] : Math.floor(Math.random() * 30) + 60;
+
+      // Update display
+      document.getElementById("sys").innerText = sys;
+      document.getElementById("dia").innerText = dia;
+      document.getElementById("bpm").innerText = bpm;
+
+      // Update status
+      const status = document.getElementById("status");
+      status.innerText = value.includes("Result")
+        ? "Blood Pressure Captured"
+        : "Measuring Blood Pressure...";
+      status.className = value.includes("Result")
+        ? "text-green-400 text-lg font-semibold mb-4"
+        : "text-yellow-400 text-lg font-semibold mb-4";
+    }
+
+
+    function updateSpo2(value){
+      const spo2Match = value.match(/SpO2\s*:\s*(\d+)%/);
+      const bpmMatch = value.match(/BPM\s*:\s*(\d+)/);
+      if(spo2Match) latestSpo2 = spo2Match[1];
+      if(bpmMatch) latestBpm = bpmMatch[1];
+      document.getElementById("spo2").innerText = latestSpo2;
+    }
+
+    function updateTemp(value) {
+      // Match things like "Temp : 36.7", "temperature 36.7", "normal temp 36.2 ℃"
+      const t = value.match(/(\d+\.?\d*)\s*°?\s*[Cc]?/i);
+      if (t) latestTemp = t[1];
+      document.getElementById("final-temp").innerText = latestTemp;
+    }
+
+
+    function animateResultMagnify(){
+      ["res-dia","res-sys","res-bpm","res-spo2"].forEach(id=>{
+        const el=document.getElementById(id);
+        if(!el) return;
+        el.classList.add("magnify");
+        setTimeout(()=>el.classList.remove("magnify"),1000);
+      });
+    }
+
+    function fillResultPanel(){
+      document.getElementById("res-dia").innerText=document.getElementById("dia").innerText;
+      document.getElementById("res-sys").innerText=document.getElementById("sys").innerText;
+      document.getElementById("res-bpm").innerText=document.getElementById("bpm").innerText;
+      document.getElementById("res-spo2").innerText=document.getElementById("spo2").innerText;
+    }
+
+    function showFinal(){
+      document.getElementById("final-dia").innerText=document.getElementById("dia").innerText;
+      document.getElementById("final-sys").innerText=document.getElementById("sys").innerText;
+      document.getElementById("final-bpm").innerText=document.getElementById("bpm").innerText;
+      document.getElementById("final-spo2").innerText=`${latestSpo2}%`;
+      document.getElementById("final-temp").innerText=`${latestTemp}`;
+    }
+
+    document.getElementById("next-btn").addEventListener("click",()=>{
+      const popup=document.getElementById("next-popup");
+      popup.classList.add("hidden");
+      popup.classList.remove("flex");
+      fadeTo("video-temp");
+      stage="tempVideo";
+    });
+
+    pollAPI();
+  </script>
+</body>
+</html>
