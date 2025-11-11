@@ -51,6 +51,7 @@ const parameterSchema = new mongoose.Schema(
     },
     heartRate: Number,
     oxygenLevel: Number,
+    temperature: Number,
     glucoseLevel: Number,
     ecgStatus: String,
     gender: String,
@@ -91,11 +92,13 @@ app.post("/api/data", async (req, res) => {
       const heartRate = bpmMatch ? parseInt(bpmMatch[1]) : latestBpmValue || null;
 
       await saveFinalResult({
-        systolic,
-        diastolic,
-        heartRate,
+        systolic: null,
+        diastolic: null,
+        heartRate: latestBpmValue,
         oxygenLevel: latestSpo2Value,
+        temperature: latestTempValue
       });
+      
     }
   }
 
@@ -145,7 +148,7 @@ app.get("/api/latest", (req, res) => {
 // ============================
 // 💾 SAVE FINAL RESULT
 // ============================
-async function saveFinalResult({ systolic, diastolic, oxygenLevel, heartRate }) {
+async function saveFinalResult({ systolic, diastolic, oxygenLevel, heartRate, temperature }) {
   try {
     // Find latest session in test.sessions
     const latestSession = await Session.findOne().sort({ createdAt: -1 });
@@ -170,6 +173,7 @@ async function saveFinalResult({ systolic, diastolic, oxygenLevel, heartRate }) 
         },
         heartRate,
         oxygenLevel,
+        temperature, // ✅ include temperature
         updatedAt: new Date(),
       });
       await newParam.save();
@@ -185,6 +189,7 @@ async function saveFinalResult({ systolic, diastolic, oxygenLevel, heartRate }) 
             "bloodPressure.createdAt": new Date(),
             heartRate,
             oxygenLevel,
+            temperature, // ✅ add this
             updatedAt: new Date(),
           },
         }
@@ -197,13 +202,15 @@ async function saveFinalResult({ systolic, diastolic, oxygenLevel, heartRate }) 
       sessionId: sid,
       systolic,
       diastolic,
-      oxygenLevel,
       heartRate,
+      oxygenLevel,
+      temperature, // ✅ log too
     });
   } catch (err) {
     console.error("❌ Error saving final result:", err);
   }
 }
+
 
 // ============================
 // 🚀 Start Server
