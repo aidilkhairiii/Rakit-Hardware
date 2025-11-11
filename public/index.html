@@ -7,11 +7,25 @@
   <script src="https://cdn.tailwindcss.com"></script>
 
   <style>
-    body { background: #000; color: white; font-family: "Courier New", monospace; overflow: hidden; }
+    body {
+      background: #000;
+      color: white;
+      font-family: "Courier New", monospace;
+      overflow: hidden;
+    }
 
     .digit-glow { text-shadow: 0 0 8px rgba(0, 255, 0, 0.7); }
-    .monitor-frame { background: radial-gradient(circle at center, #0a0a0a, #000); border: 4px solid #0f3b7a; border-radius: 1.5rem; box-shadow: 0 0 60px rgba(0,0,255,0.2); }
-    .section-title { font-size: 0.8rem; color: #9ca3af; margin-bottom: 0.25rem; }
+    .monitor-frame {
+      background: radial-gradient(circle at center, #0a0a0a, #000);
+      border: 4px solid #0f3b7a;
+      border-radius: 1.5rem;
+      box-shadow: 0 0 60px rgba(0,0,255,0.2);
+    }
+    .section-title {
+      font-size: 0.8rem;
+      color: #9ca3af;
+      margin-bottom: 0.25rem;
+    }
 
     /* Fade transition */
     .fade { opacity: 0; transition: opacity 1s ease-in-out; pointer-events: none; }
@@ -25,7 +39,7 @@
     }
     .normal { transform: scale(1); transition: transform 0.6s ease-in-out; }
 
-    /* Result Panel Style */
+    /* Result Panel */
     #result-panel {
       background: linear-gradient(180deg, #001020, #000);
       border: 3px solid #00bfff;
@@ -33,7 +47,7 @@
       box-shadow: 0 0 60px rgba(0,191,255,0.4);
     }
 
-    /* Z-index layers */
+    /* Z-layers */
     .z-video { z-index: 10; }
     .z-monitor { z-index: 20; }
     .z-result { z-index: 25; }
@@ -183,10 +197,9 @@
           }
         }
 
+        // 🌡️ Temperature logic (only triggers final if actual number found)
         if (data.temp && typeof data.temp === "string" && /\d/.test(data.temp)) {
           updateTemp(data.temp);
-
-          // 🌡️ Auto transition only if we actually received a temperature value
           if (stage === "tempVideo" && /(\d+\.?\d*)/.test(data.temp)) {
             setTimeout(() => {
               fadeTo("final-display");
@@ -196,18 +209,14 @@
           }
         }
 
-
-      }catch(e){
-        console.error("API error:",e);
+      } catch(e) {
+        console.error("API error:", e);
       }
       setTimeout(pollAPI,500);
     }
 
     function updateBP(value) {
-      // Example: "Result : 99 / 63, BPM : 65"
       const clean = value.replace("On going :", "").replace("Result :", "").trim();
-
-      // Extract numbers properly
       const bpMatch = clean.match(/(\d+)\s*\/\s*(\d+)/);
       const bpmMatch = clean.match(/BPM\s*:\s*(\d+)/);
 
@@ -215,12 +224,10 @@
       const dia = bpMatch ? bpMatch[2] : "--";
       const bpm = bpmMatch ? bpmMatch[1] : Math.floor(Math.random() * 30) + 60;
 
-      // Update display
       document.getElementById("sys").innerText = sys;
       document.getElementById("dia").innerText = dia;
       document.getElementById("bpm").innerText = bpm;
 
-      // Update status
       const status = document.getElementById("status");
       status.innerText = value.includes("Result")
         ? "Blood Pressure Captured"
@@ -229,7 +236,6 @@
         ? "text-green-400 text-lg font-semibold mb-4"
         : "text-yellow-400 text-lg font-semibold mb-4";
     }
-
 
     function updateSpo2(value){
       const spo2Match = value.match(/SpO2\s*:\s*(\d+)%/);
@@ -240,12 +246,10 @@
     }
 
     function updateTemp(value) {
-      // Match things like "Temp : 36.7", "temperature 36.7", "normal temp 36.2 ℃"
       const t = value.match(/(\d+\.?\d*)\s*°?\s*[Cc]?/i);
       if (t) latestTemp = t[1];
       document.getElementById("final-temp").innerText = latestTemp;
     }
-
 
     function animateResultMagnify(){
       ["res-dia","res-sys","res-bpm","res-spo2"].forEach(id=>{
