@@ -27,3 +27,4 @@ build/
 # Backup files
 *.bak
 .env
+.env.local
