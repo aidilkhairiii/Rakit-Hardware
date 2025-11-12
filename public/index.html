@@ -160,6 +160,34 @@
   </div>
 
   <script>
+    // ========== HANDSHAKE WITH PARENT ==========
+    const PARENT_ORIGIN = "http://localhost:3000";
+    let hasAcknowledgedParent = false;
+
+    function postToParent(message) {
+      window.parent.postMessage(message, PARENT_ORIGIN);
+    }
+
+    function handleParentHandshake(event) {
+      if (event.origin !== PARENT_ORIGIN) {
+        return;
+      }
+
+      const { data } = event;
+      if (!data || typeof data !== "object") {
+        return;
+      }
+
+      if (!hasAcknowledgedParent && data.type === "parent:ready") {
+        hasAcknowledgedParent = true;
+        console.log("✅ Parent ready received, sending hardware:ready");
+        postToParent({ type: "hardware:ready" });
+      }
+    }
+
+    // Listen for parent messages
+    window.addEventListener("message", handleParentHandshake);
+
     // ========== STATE VARIABLES ==========
     let latestSpo2 = "--", latestBpm = "--", latestTemp = "--";
     let stage = "bpVideo";
@@ -357,6 +385,10 @@
       document.getElementById("final-bpm").innerText=document.getElementById("bpm").innerText;
       document.getElementById("final-spo2").innerText=`${latestSpo2}%`;
       document.getElementById("final-temp").innerText=`${latestTemp}`;
+      
+      // Notify parent that hardware setup is complete
+      console.log("✅ Hardware setup complete, notifying parent");
+      postToParent({ type: "hardware:complete" });
     }
 
     document.getElementById("next-btn").addEventListener("click",()=>{
