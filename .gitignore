@@ -1,0 +1,28 @@
+# Environment variables
+.env
+
+# Node dependencies
+node_modules/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build / Output folders
+dist/
+build/
+
+# macOS system files
+.DS_Store
+
+# IDE / Editor configs
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
+*.log
+
+# Backup files
+*.bak

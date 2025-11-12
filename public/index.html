@@ -142,119 +142,167 @@
   </div>
 
   <script>
+    // ========== STATE VARIABLES ==========
     let latestSpo2 = "--", latestBpm = "--", latestTemp = "--";
     let stage = "bpVideo";
     let sawBP = false, sawSpO2 = false;
+    let wasEmpty = false;
+    let resetInProgress = false;
 
+    // ========== HELPERS ==========
     function fadeTo(targetId) {
       const ids = ["video-bp","video-spo2","video-temp","vital-monitor","result-panel","final-display"];
       const target = document.getElementById(targetId);
       if (!target) return;
-      target.classList.remove("hidden");
-      requestAnimationFrame(() => target.classList.add("visible"));
+
       ids.forEach(id=>{
-        if(id===targetId) return;
         const el=document.getElementById(id);
         if(!el) return;
+        el.classList.add("hidden");
         el.classList.remove("visible");
-        setTimeout(()=>el.classList.add("hidden"),1000);
+      });
+
+      target.classList.remove("hidden");
+      setTimeout(()=>target.classList.add("visible"),50);
+    }
+
+    function resetVideos() {
+      const vids = document.querySelectorAll("video");
+      vids.forEach(v => {
+        v.pause();
+        v.currentTime = 0;
+        v.play();
       });
     }
 
-    async function pollAPI(){
-      try{
+    function fullResetUI() {
+      if (resetInProgress) return;
+      resetInProgress = true;
+      console.log("🔁 FULL RESET TRIGGERED");
+
+      ["sys","dia","bpm","spo2","res-sys","res-dia","res-bpm","res-spo2","final-sys","final-dia","final-bpm","final-spo2","final-temp"]
+      .forEach(id=>{
+        const el=document.getElementById(id);
+        if(el) el.innerText="--";
+      });
+
+      latestSpo2="--"; latestBpm="--"; latestTemp="--";
+      sawBP=false; sawSpO2=false; stage="bpVideo"; wasEmpty=true;
+
+      const popup=document.getElementById("next-popup");
+      popup.classList.add("hidden");
+      popup.classList.remove("flex");
+
+      resetVideos();
+      fadeTo("video-bp");
+
+      setTimeout(()=>{ resetInProgress=false; },1500);
+    }
+
+    // ========== API POLLING ==========
+    async function pollAPI() {
+      try {
         const res = await fetch("/api/latest");
         const data = await res.json();
-        const hasBP = typeof data.bp === "string" && data.bp.trim() !== "";
-        const hasSpO2 = typeof data.spo2 === "string" && data.spo2.trim() !== "";
+        const hasBP = data.bp && data.bp.trim() !== "";
+        const hasSpO2 = data.spo2 && data.spo2.trim() !== "";
+        const hasTemp = data.temp && data.temp.trim() !== "";
 
-        if(stage === "bpVideo" && hasBP && !sawBP){
-          sawBP = true;
+        if (!hasBP && !hasSpO2 && !hasTemp && stage === "final") {
+          console.log("✅ Backend cleared — resetting UI...");
+          setTimeout(fullResetUI, 1500);
+          return;
+        }
+
+        if (wasEmpty && hasBP) {
+          wasEmpty = false; sawBP=false; sawSpO2=false;
           fadeTo("video-spo2");
-          stage = "spo2Video";
+          stage="spo2Video";
         }
 
-        if(stage === "spo2Video" && hasSpO2 && !sawSpO2){
-          sawSpO2 = true;
+        if (stage==="bpVideo" && hasBP && !sawBP) {
+          sawBP=true;
+          fadeTo("video-spo2");
+          stage="spo2Video";
+        }
+
+        if (stage==="spo2Video" && hasSpO2 && !sawSpO2) {
+          sawSpO2=true;
           fadeTo("vital-monitor");
-          stage = "monitor";
+          stage="monitor";
         }
 
-        if(stage === "monitor"){
+        if (stage==="monitor") {
           if(hasBP) updateBP(data.bp);
           if(hasSpO2) updateSpo2(data.spo2);
 
-          if(hasBP && data.bp.includes("Result")){
+          if(hasBP && data.bp.includes("Result")) {
             fadeTo("result-panel");
             animateResultMagnify();
             fillResultPanel();
-            stage = "result";
+            stage="result";
             setTimeout(()=>{
               const popup=document.getElementById("next-popup");
               popup.classList.remove("hidden");
               popup.classList.add("flex");
-            },2000);
+            },1500);
           }
         }
 
-        // 🌡️ Temperature logic (only triggers final if actual number found)
-        if (data.temp && typeof data.temp === "string" && /\d/.test(data.temp)) {
+        if (data.temp && /\d/.test(data.temp)) {
           updateTemp(data.temp);
-          if (stage === "tempVideo" && /(\d+\.?\d*)/.test(data.temp)) {
-            setTimeout(() => {
+          if (stage==="tempVideo" && /(\d+\.?\d*)/.test(data.temp)) {
+            setTimeout(()=>{
               fadeTo("final-display");
               showFinal();
-              stage = "final";
-            }, 1500);
+              stage="final";
+            },1500);
           }
         }
-
-      } catch(e) {
-        console.error("API error:", e);
-      }
+      } catch(e) { console.error("API error:", e); }
       setTimeout(pollAPI,500);
     }
 
-    function updateBP(value) {
-      const clean = value.replace("On going :", "").replace("Result :", "").trim();
-      const bpMatch = clean.match(/(\d+)\s*\/\s*(\d+)/);
-      const bpmMatch = clean.match(/BPM\s*:\s*(\d+)/);
+    // ========== UI UPDATERS ==========
+    function updateBP(value){
+      const clean=value.replace("On going :","").replace("Result :","").trim();
+      const bpMatch=clean.match(/(\d+)\s*\/\s*(\d+)/);
+      const bpmMatch=clean.match(/BPM\s*:\s*(\d+)/);
+      const sys=bpMatch?bpMatch[1]:"--";
+      const dia=bpMatch?bpMatch[2]:"--";
+      const bpm=bpmMatch?bpmMatch[1]:Math.floor(Math.random()*30)+60;
 
-      const sys = bpMatch ? bpMatch[1] : "--";
-      const dia = bpMatch ? bpMatch[2] : "--";
-      const bpm = bpmMatch ? bpmMatch[1] : Math.floor(Math.random() * 30) + 60;
+      document.getElementById("sys").innerText=sys;
+      document.getElementById("dia").innerText=dia;
+      document.getElementById("bpm").innerText=bpm;
 
-      document.getElementById("sys").innerText = sys;
-      document.getElementById("dia").innerText = dia;
-      document.getElementById("bpm").innerText = bpm;
-
-      const status = document.getElementById("status");
-      status.innerText = value.includes("Result")
-        ? "Blood Pressure Captured"
-        : "Measuring Blood Pressure...";
-      status.className = value.includes("Result")
-        ? "text-green-400 text-lg font-semibold mb-4"
-        : "text-yellow-400 text-lg font-semibold mb-4";
+      const status=document.getElementById("status");
+      status.innerText=value.includes("Result")
+        ?"Blood Pressure Captured"
+        :"Measuring Blood Pressure...";
+      status.className=value.includes("Result")
+        ?"text-green-400 text-lg font-semibold mb-4"
+        :"text-yellow-400 text-lg font-semibold mb-4";
     }
 
     function updateSpo2(value){
-      const spo2Match = value.match(/SpO2\s*:\s*(\d+)%/);
-      const bpmMatch = value.match(/BPM\s*:\s*(\d+)/);
-      if(spo2Match) latestSpo2 = spo2Match[1];
-      if(bpmMatch) latestBpm = bpmMatch[1];
-      document.getElementById("spo2").innerText = latestSpo2;
+      const spo2Match=value.match(/SpO2\s*:\s*(\d+)%/);
+      const bpmMatch=value.match(/BPM\s*:\s*(\d+)/);
+      if(spo2Match) latestSpo2=spo2Match[1];
+      if(bpmMatch) latestBpm=bpmMatch[1];
+      document.getElementById("spo2").innerText=latestSpo2;
     }
 
-    function updateTemp(value) {
-      const t = value.match(/(\d+\.?\d*)\s*°?\s*[Cc]?/i);
-      if (t) latestTemp = t[1];
-      document.getElementById("final-temp").innerText = latestTemp;
+    function updateTemp(value){
+      const t=value.match(/(\d+\.?\d*)\s*°?\s*[Cc]?/i);
+      if(t) latestTemp=t[1];
+      document.getElementById("final-temp").innerText=latestTemp;
     }
 
     function animateResultMagnify(){
       ["res-dia","res-sys","res-bpm","res-spo2"].forEach(id=>{
         const el=document.getElementById(id);
-        if(!el) return;
+        if(!el)return;
         el.classList.add("magnify");
         setTimeout(()=>el.classList.remove("magnify"),1000);
       });
@@ -280,9 +328,17 @@
       popup.classList.add("hidden");
       popup.classList.remove("flex");
       fadeTo("video-temp");
+      resetVideos();
       stage="tempVideo";
     });
 
+    // 🚪 Reset backend automatically when user exits or refreshes
+    window.addEventListener("beforeunload", () => {
+      navigator.sendBeacon("/api/reset");
+    });
+
+    fadeTo("video-bp");
+    resetVideos();
     pollAPI();
   </script>
 </body>
