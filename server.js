@@ -4,6 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
+import { exec } from "child_process";
 
 dotenv.config();
 
@@ -88,6 +89,43 @@ app.post("/api/data", async (req, res) => {
   }
 
   res.json({ success: true });
+});
+
+app.post("/run-postdata", (req, res) => {
+  exec("node postData.js", (error, stdout, stderr) => {
+    if (error) {
+      console.error(`Error: ${error.message}`);
+    }
+    if (stderr) console.error(`stderr: ${stderr}`);
+    console.log(`stdout: ${stdout}`);
+  });
+});
+
+app.post("/run-postspo", (req, res) => {
+  // Set timeout = 10 seconds (10,000 ms)
+  exec("node postSpo2.js", { timeout: 10000 }, (error, stdout, stderr) => {
+    if (error) {
+      // This happens if the process times out or exits with error
+      if (error.killed) {
+        console.log("✅ postSpo2.js automatically stopped after 10 seconds.");
+      }
+      console.error(`Error: ${error.message}`);
+    }
+
+    if (stderr) console.error(`stderr: ${stderr}`);
+    console.log(`stdout: ${stdout}`);
+  });
+});
+
+app.post("/run-posttemp", (req, res) => {
+  exec("node temp-sender.js", (error, stdout, stderr) => {
+    if (error) {
+      console.error(`Error: ${error.message}`);
+      return res.status(500).send("Error running script.");
+    }
+    if (stderr) console.error(`stderr: ${stderr}`);
+    console.log(`stdout: ${stdout}`);
+  });
 });
 
 // ============================

@@ -68,16 +68,34 @@
   <!-- Step 1: BP Tutorial -->
   <div id="video-bp" class="fade visible absolute inset-0 flex justify-center items-center z-video">
     <video src="BP.MOV" autoplay muted loop playsinline class="w-full h-full object-cover"></video>
+     <button
+      onclick="sendBPData()"
+      style="margin-top:20px; padding:10px 20px; background:limegreen; color:black; border:none; border-radius:6px; font-weight:bold;"
+    >
+      Send Dummy Data
+    </button>
   </div>
 
   <!-- Step 2: SpO₂ Tutorial -->
   <div id="video-spo2" class="fade absolute inset-0 flex justify-center items-center z-video hidden">
     <video src="oxygen.MOV" autoplay muted loop playsinline class="w-full h-full object-cover"></video>
+    <button
+      onclick="sendSPOData()"
+      style="margin-top:20px; padding:10px 20px; background:limegreen; color:black; border:none; border-radius:6px; font-weight:bold;"
+    >
+      Send Dummy Data
+    </button>
   </div>
 
   <!-- Step 3: Temperature Tutorial -->
   <div id="video-temp" class="fade absolute inset-0 flex justify-center items-center z-video hidden">
     <video src="temperature.MOV" autoplay muted loop playsinline class="w-full h-full object-cover"></video>
+    <button
+      onclick="sendTempData()"
+      style="margin-top:20px; padding:10px 20px; background:limegreen; color:black; border:none; border-radius:6px; font-weight:bold;"
+    >
+      Send Dummy Data
+    </button>
   </div>
 
   <!-- Step 4: Vital Monitor -->
@@ -148,6 +166,24 @@
     let sawBP = false, sawSpO2 = false;
     let wasEmpty = false;
     let resetInProgress = false;
+
+    async function sendBPData() {
+      const res = await fetch("/run-postdata", { method: "POST" });
+      const text = await res.text();
+      alert(text);
+    }
+
+    async function sendSPOData() {
+      const res = await fetch("/run-postspo", { method: "POST" });
+      const text = await res.text();
+      alert(text);
+    }
+
+    async function sendTempData() {
+      const res = await fetch("/run-posttemp", { method: "POST" });
+      const text = await res.text();
+      alert(text);
+    }
 
     // ========== HELPERS ==========
     function fadeTo(targetId) {
