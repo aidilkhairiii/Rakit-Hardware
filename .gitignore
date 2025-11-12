@@ -28,3 +28,4 @@ build/
 *.bak
 .env
 .env.local
+.env
