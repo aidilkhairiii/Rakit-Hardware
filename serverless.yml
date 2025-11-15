@@ -1,0 +1,61 @@
+service: rakit-hardware-api
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: us-east-1  # Change to your preferred region
+  stage: ${opt:stage, 'dev'}
+  
+  environment:
+    # Your server.js URL (you'll need to expose this publicly)
+    # Use ngrok or deploy server.js to a cloud service
+    SERVER_URL: ${env:SERVER_URL, 'http://localhost:3000'}
+    NODE_ENV: production
+  
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+          Resource: "*"
+
+functions:
+  bpHandler:
+    handler: lambda/bp-handler.handler
+    events:
+      - http:
+          path: api/data
+          method: post
+          cors: true
+    timeout: 30
+    memorySize: 256  # Reduced since we're just forwarding
+
+  spo2Handler:
+    handler: lambda/spo2-handler.handler
+    events:
+      - http:
+          path: api/spo2
+          method: post
+          cors: true
+    timeout: 30
+    memorySize: 256  # Reduced since we're just forwarding
+
+  tempHandler:
+    handler: lambda/temp-handler.handler
+    events:
+      - http:
+          path: api/temp
+          method: post
+          cors: true
+    timeout: 30
+    memorySize: 256  # Reduced since we're just forwarding
+
+plugins:
+  - serverless-offline
+
+custom:
+  serverless-offline:
+    httpPort: 3001

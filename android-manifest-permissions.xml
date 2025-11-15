@@ -1,0 +1,21 @@
+<!-- Add these permissions to your AndroidManifest.xml -->
+
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.yourapp">
+
+    <!-- Internet permission (required for API calls) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    
+    <!-- Network state permission (optional, for checking connectivity) -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    
+    <!-- Allow cleartext traffic (only if testing with HTTP, not needed for HTTPS) -->
+    <application
+        android:usesCleartextTraffic="true"
+        ...>
+        
+        <!-- Your activities -->
+        
+    </application>
+
+</manifest>

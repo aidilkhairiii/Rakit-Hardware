@@ -218,6 +218,15 @@
     // Listen for parent messages
     window.addEventListener("message", handleParentHandshake);
 
+    // ========== API CONFIGURATION ==========
+    // HTML Interface Mode:
+    // - LOCAL: Uses server.js (node server.js) for real-time polling
+    // - AWS: Uses AWS Lambda (buttons send data, but no real-time updates)
+    const USE_AWS = false; // Set to true to use AWS for button clicks only
+    const AWS_API_URL = "https://ttga54u0zj.execute-api.us-east-1.amazonaws.com/dev";
+    const LOCAL_API_URL = "";
+    const API_BASE_URL = USE_AWS ? AWS_API_URL : LOCAL_API_URL;
+
     // ========== STATE VARIABLES ==========
     let latestSpo2 = "--", latestBpm = "--", latestTemp = "--";
     let stage = "bpVideo";
@@ -226,21 +235,48 @@
     let resetInProgress = false;
 
     async function sendBPData() {
-      const res = await fetch("/run-postdata", { method: "POST" });
-      const text = await res.text();
-      alert(text);
+      try {
+        // Send dummy blood pressure data
+        const response = await fetch(`${API_BASE_URL}/api/data`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ value: "Result: 120 / 80, BPM : 72" })
+        });
+        const data = await response.json();
+        alert(data.success ? "✅ BP Data Sent!" : "❌ Failed to send BP data");
+      } catch (error) {
+        alert("❌ Error: " + error.message);
+      }
     }
 
     async function sendSPOData() {
-      const res = await fetch("/run-postspo", { method: "POST" });
-      const text = await res.text();
-      alert(text);
+      try {
+        // Send dummy SpO2 data
+        const response = await fetch(`${API_BASE_URL}/api/spo2`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ value: "SpO2 : 98%, BPM : 75" })
+        });
+        const data = await response.json();
+        alert(data.success ? "✅ SpO2 Data Sent!" : "❌ Failed to send SpO2 data");
+      } catch (error) {
+        alert("❌ Error: " + error.message);
+      }
     }
 
     async function sendTempData() {
-      const res = await fetch("/run-posttemp", { method: "POST" });
-      const text = await res.text();
-      alert(text);
+      try {
+        // Send dummy temperature data
+        const response = await fetch(`${API_BASE_URL}/api/temp`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ value: "37.5°C" })
+        });
+        const data = await response.json();
+        alert(data.success ? "✅ Temperature Data Sent!" : "❌ Failed to send temperature data");
+      } catch (error) {
+        alert("❌ Error: " + error.message);
+      }
     }
 
     // ========== HELPERS ==========
